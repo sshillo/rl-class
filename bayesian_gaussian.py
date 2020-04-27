@@ -5,45 +5,48 @@
 
 import matplotlib.pyplot as plt
 import numpy as np
-from scipy.stats import beta
+from scipy.stats import norm
 
 
 # np.random.seed(2)
 NUM_TRIALS = 2000
-BANDIT_PROBABILITIES = [0.2, 0.5, 0.75]
+BANDIT_MEANS = [1, 2, 3]
 
 
 class Bandit:
   def __init__(self, p):
     self.p = p
-    self.a = 1
-    self.b = 1
-    self.N = 0 # for information only
+    self.p_estimate = 0
+    self.N = 1 # for information only
+    self.tau = 1
+    self.lambda_ = 1
+    self.sum_x = 0
 
   def pull(self):
-    return np.random.random() < self.p
+    return np.random.randn() / np.sqrt(self.tau) + self.p
 
   def sample(self):
-    return np.random.beta(self.a, self.b) # TODO - draw a sample from Beta(a, b)
+    return np.random.randn() / np.sqrt(self.lambda_) + self.p_estimate
 
   def update(self, x):
-    self.a += x
-    self.b += 1 - x
+    self.lambda_ += self.tau
+    self.sum_x += x
+    self.p_estimate = self.tau * self.sum_x / self.lambda_
     self.N += 1
 
 
 def plot(bandits, trial):
-  x = np.linspace(0, 1, 200)
+  x = np.linspace(0, 10, 200)
   for b in bandits:
-    y = beta.pdf(x, b.a, b.b)
-    plt.plot(x, y, label=f"real p: {b.p:.4f}, win rate = {b.a - 1}/{b.N}")
+    y = norm.pdf(x, b.p_estimate, np.sqrt(1. / b.lambda_))
+    plt.plot(x, y, label=f"real p: {b.p:.4f}, num plays = {b.N}")
   plt.title(f"Bandit distributions after {trial} trials")
   plt.legend()
   plt.show()
 
 
 def experiment():
-  bandits = [Bandit(p) for p in BANDIT_PROBABILITIES]
+  bandits = [Bandit(p) for p in BANDIT_MEANS]
 
   sample_points = [5,10,20,50,100,200,500,1000,1500,1999]
   rewards = np.zeros(NUM_TRIALS)
